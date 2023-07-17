@@ -7,10 +7,17 @@ import frappe
 
 def execute(filters=None):
     additional_table_columns = get_additional_table_columns()
+    additional_query_columns=[
+            "supplier_gstin",
+            "company_gstin",
+            "is_reverse_charge",
+            "gst_category",
+        ],
 
     columns, data = _execute(
         filters,
-        additional_table_columns
+        additional_table_columns,
+        additional_query_columns
     )
    
     data = remove_internal_supplier_data(data)
