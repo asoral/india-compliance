@@ -79,8 +79,7 @@ def execute(filters=None):
 
     columns, data = _execute(
         filters,
-        additional_table_columns,
-        get_column_names(additional_table_columns),
+        additional_table_columns
     )
 
     data = remove_internal_customer_data(data)

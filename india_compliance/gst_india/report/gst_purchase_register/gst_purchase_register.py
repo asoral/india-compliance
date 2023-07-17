@@ -7,17 +7,9 @@ import frappe
 
 def execute(filters=None):
     additional_table_columns = get_additional_table_columns()
-    additional_query_columns=[
-            "supplier_gstin",
-            "company_gstin",
-            "is_reverse_charge",
-            "gst_category",
-        ],
-
     columns, data = _execute(
         filters,
-        additional_table_columns,
-        additional_query_columns
+        additional_table_columns
     )
    
     data = remove_internal_supplier_data(data)
@@ -53,12 +45,10 @@ def get_additional_table_columns():
 
 
 def remove_internal_supplier_data(data):
-    print(data)
     new_data=[]
-    if len(data)>0:
-        for row in data:
-            if not frappe.get_cached_value(
-                "Supplier", row[2], "is_internal_supplier"
-            ):
-                new_data.append(row)
-        return new_data
+    for row in data:
+        if not frappe.get_cached_value(
+            "Supplier", row[2], "is_internal_supplier"
+        ):
+            new_data.append(row)
+    return new_data
