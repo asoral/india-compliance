@@ -46,14 +46,12 @@ def get_additional_table_columns():
 
 
 def remove_internal_supplier_data(data):
+    print(data)
+    new_data=[]
     if len(data)>0:
-        new_data = [
-            row
-            for row in data
-            
+        for row in data:
             if not frappe.get_cached_value(
                 "Supplier", row[2], "is_internal_supplier"
-            )
-        ]
-
+            ):
+                new_data.append(row)
         return new_data
