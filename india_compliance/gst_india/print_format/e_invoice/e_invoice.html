@@ -78,6 +78,10 @@
 				"Document Type": invoice_data.DocDtls.Typ,
 				"Document No.": invoice_data.DocDtls.No,
 				"e-Waybill No.": doc.ewaybill,
+				"Po No.":doc.custom_po_number,
+				"Po Date.":doc.get_formatted("custom_po_date"),
+				"Grn No.":doc.custom_grn_number,
+				"Grn Date":doc.get_formatted("custom_grn_date")
 			}
 		%}
 		{% for key, value in transaction_details.items() %}
@@ -146,13 +150,19 @@
 	<table class="table table-bordered e-invoice-table">
 		<thead>
 			<tr>
-				{% for field, label in item_fields.items() %}
-					<th
-					{% if field not in ("HsnCd", "PrdDesc", "Unit") -%}
-					class="text-right"
-					{%- endif -%}
-					>{{ label }}</th>
-				{% endfor %}
+				<th class="text-right">Sr.</th>
+				<th class="text-right">Product Description</th>
+				<th class="text-right">HSN Code</th>
+				<th class="text-right">Qty</th>
+				<th class="text-right">UOM	</th>
+				<th class="text-right">Rate</th>
+				<th class="text-right">Mrp</th>
+				<th class="text-right">Discount%</th>
+				<th class="text-right">Taxable Amount</th>
+				<th class="text-right">Tax Rate</th>
+				<th class="text-right">Total</th>
+				
+				
 			</tr>
 		</thead>
 		<tbody>
@@ -161,6 +171,7 @@
 					{% for field in item_fields %}
 						{% set value = item[field] %}
 						<!-- Currency -->
+						
 						{% if field.endswith(("Val", "Amt", "Price")) or field == "Discount" %}
 							<td class="text-right text-nowrap">
 								{{ frappe.utils.fmt_money(value, currency="INR") }}
@@ -180,7 +191,29 @@
 						{% else %}
 							<td class="text-left">{{ value }}</td>
 						{% endif %}
+						{%for k in doc.items%}
+						{%if field=="UnitPrice"%}
+						{% if item.PrdDesc==k.item_name%}
+						<td class="text-right text-nowrap">
+							
+							{{k.get_formatted("custom_mrp")}}
+							
+						</td>
+						{%endif%}
+						
+						{% if item.PrdDesc==k.item_name%}
+						<td class="text-right text-nowrap">
+							
+							{{k.discount_percentage}}
+							
+						</td>
+						{%endif%}
+						{%endif%}
+
+						{%endfor%}
+
 					{% endfor %}
+					
 				</tr>
 			{% endfor %}
 		</tbody>
@@ -217,3 +250,9 @@
 {% endif %}
 {% endif %}
 {% endif %}
+<h5 class="section-heading">5.HSN Summary</h5>
+<div class="row section-break">
+	<div class="col-xs-12 column-break">
+{{doc.other_charges_calculation}}
+</div>
+</div>

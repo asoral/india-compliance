@@ -15,11 +15,14 @@ from india_compliance.gst_india.constants.e_waybill import (
 from india_compliance.gst_india.overrides.transaction import is_inter_state_supply
 from india_compliance.gst_india.utils import as_ist
 
+import frappe
+
 E_INVOICE_ITEM_FIELDS = {
     "SlNo": "Sr.",
     "PrdDesc": "Product Description",
     "HsnCd": "HSN Code",
     "Qty": "Qty",
+    'Mrp':"Mrp",
     "Unit": "UOM",
     "UnitPrice": "Rate",
     "Discount": "Discount",
@@ -110,12 +113,10 @@ def get_ewaybill_barcode(ewaybill):
 
 def get_non_zero_fields(data, fields):
     """Returns a list of fields with non-zero values"""
-
     if isinstance(data, dict):
         data = [data]
 
     non_zero_fields = set()
-
     for row in data:
         for field in fields:
             if field not in non_zero_fields and row.get(field, 0) != 0:
@@ -128,7 +129,6 @@ def get_fields_to_display(data, field_map, mandatory_fields=None):
     fields_to_display = get_non_zero_fields(data, field_map)
     if mandatory_fields:
         fields_to_display.update(mandatory_fields)
-
     return {
         field: label for field, label in field_map.items() if field in fields_to_display
     }
