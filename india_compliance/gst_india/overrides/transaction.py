@@ -124,60 +124,117 @@ def update_taxable_values(doc, valid_accounts):
 
 
 def validate_item_wise_tax_detail(doc, gst_accounts):
-    if doc.doctype not in DOCTYPES_WITH_GST_DETAIL:
-        return
+    if doc.doctype=="Purchase Order":
+        if not doc.custom_manual_tax:
+            if doc.doctype not in DOCTYPES_WITH_GST_DETAIL:
+                return
 
-    item_taxable_values = defaultdict(float)
-    item_qty_map = defaultdict(float)
+            item_taxable_values = defaultdict(float)
+            item_qty_map = defaultdict(float)
 
-    cess_non_advol_account = get_gst_accounts_by_tax_type(doc.company, "cess_non_advol")
+            cess_non_advol_account = get_gst_accounts_by_tax_type(doc.company, "cess_non_advol")
 
-    for row in doc.items:
-        item_key = row.item_code or row.item_name
-        item_taxable_values[item_key] += row.taxable_value
-        item_qty_map[item_key] += row.qty
+            for row in doc.items:
+                item_key = row.item_code or row.item_name
+                item_taxable_values[item_key] += row.taxable_value
+                item_qty_map[item_key] += row.qty
 
-    for row in doc.taxes:
-        if row.account_head not in gst_accounts:
-            continue
+            for row in doc.taxes:
+                if row.account_head not in gst_accounts:
+                    continue
 
-        if row.charge_type != "Actual":
-            continue
+                if row.charge_type != "Actual":
+                    continue
 
-        item_wise_tax_detail = frappe.parse_json(row.item_wise_tax_detail or "{}")
+                item_wise_tax_detail = frappe.parse_json(row.item_wise_tax_detail or "{}")
 
-        for item_name, (tax_rate, tax_amount) in item_wise_tax_detail.items():
-            if tax_amount and not tax_rate:
-                frappe.throw(
-                    _(
-                        "Tax Row #{0}: Charge Type is set to Actual. However, this would"
-                        " not compute item taxes, and your further reporting will be affected."
-                    ).format(row.idx),
-                    title=_("Invalid Charge Type"),
+                for item_name, (tax_rate, tax_amount) in item_wise_tax_detail.items():
+                    if tax_amount and not tax_rate:
+                        frappe.throw(
+                            _(
+                                "Tax Row #{0}: Charge Type is set to Actual. However, this would"
+                                " not compute item taxes, and your further reporting will be affected."
+                            ).format(row.idx),
+                            title=_("Invalid Charge Type"),
+                        )
+
+                    # Sales Invoice is created with manual tax amount. So, when a sales return is created,
+                    # the tax amount is not recalculated, causing the issue.
+
+                    is_cess_non_advol = row.account_head in cess_non_advol_account
+                    multiplier = (
+                        item_qty_map.get(item_name, 0)
+                        if is_cess_non_advol
+                        else item_taxable_values.get(item_name, 0) / 100
+                    )
+                    tax_difference = abs(multiplier * tax_rate - tax_amount)
+
+                    if tax_difference > 1:
+                        correct_charge_type = (
+                            "On Item Quantity" if is_cess_non_advol else "On Net Total"
+                        )
+
+                        frappe.throw(
+                            _(
+                                "Tax Row #{0}: Charge Type is set to Actual. However, Tax Amount {1} as computed for Item {2}"
+                                " is incorrect. Try setting the Charge Type to {3}"
+                            ).format(row.idx, tax_amount, bold(item_name), correct_charge_type)
+                        )
+    else:
+        if doc.doctype not in DOCTYPES_WITH_GST_DETAIL:
+            return
+
+        item_taxable_values = defaultdict(float)
+        item_qty_map = defaultdict(float)
+
+        cess_non_advol_account = get_gst_accounts_by_tax_type(doc.company, "cess_non_advol")
+
+        for row in doc.items:
+            item_key = row.item_code or row.item_name
+            item_taxable_values[item_key] += row.taxable_value
+            item_qty_map[item_key] += row.qty
+
+        for row in doc.taxes:
+            if row.account_head not in gst_accounts:
+                continue
+
+            if row.charge_type != "Actual":
+                continue
+
+            item_wise_tax_detail = frappe.parse_json(row.item_wise_tax_detail or "{}")
+
+            for item_name, (tax_rate, tax_amount) in item_wise_tax_detail.items():
+                if tax_amount and not tax_rate:
+                    frappe.throw(
+                        _(
+                            "Tax Row #{0}: Charge Type is set to Actual. However, this would"
+                            " not compute item taxes, and your further reporting will be affected."
+                        ).format(row.idx),
+                        title=_("Invalid Charge Type"),
+                    )
+
+                # Sales Invoice is created with manual tax amount. So, when a sales return is created,
+                # the tax amount is not recalculated, causing the issue.
+
+                is_cess_non_advol = row.account_head in cess_non_advol_account
+                multiplier = (
+                    item_qty_map.get(item_name, 0)
+                    if is_cess_non_advol
+                    else item_taxable_values.get(item_name, 0) / 100
                 )
+                tax_difference = abs(multiplier * tax_rate - tax_amount)
 
-            # Sales Invoice is created with manual tax amount. So, when a sales return is created,
-            # the tax amount is not recalculated, causing the issue.
+                if tax_difference > 1:
+                    correct_charge_type = (
+                        "On Item Quantity" if is_cess_non_advol else "On Net Total"
+                    )
 
-            is_cess_non_advol = row.account_head in cess_non_advol_account
-            multiplier = (
-                item_qty_map.get(item_name, 0)
-                if is_cess_non_advol
-                else item_taxable_values.get(item_name, 0) / 100
-            )
-            tax_difference = abs(multiplier * tax_rate - tax_amount)
-
-            if tax_difference > 1:
-                correct_charge_type = (
-                    "On Item Quantity" if is_cess_non_advol else "On Net Total"
-                )
-
-                frappe.throw(
-                    _(
-                        "Tax Row #{0}: Charge Type is set to Actual. However, Tax Amount {1} as computed for Item {2}"
-                        " is incorrect. Try setting the Charge Type to {3}"
-                    ).format(row.idx, tax_amount, bold(item_name), correct_charge_type)
-                )
+                    frappe.throw(
+                        _(
+                            "Tax Row #{0}: Charge Type is set to Actual. However, Tax Amount {1} as computed for Item {2}"
+                            " is incorrect. Try setting the Charge Type to {3}"
+                        ).format(row.idx, tax_amount, bold(item_name), correct_charge_type)
+                    )
 
 
 def get_tds_amount(doc):
@@ -1606,5 +1663,5 @@ def before_update_after_submit(doc, method=None):
 
     valid_accounts = validate_gst_accounts(doc, is_sales_transaction) or ()
     update_taxable_values(doc, valid_accounts)
-    validate_item_wise_tax_detail(doc, valid_accounts)
-    update_gst_details(doc)
+    # validate_item_wise_tax_detail(doc, valid_accounts)
+    # update_gst_details(doc)
