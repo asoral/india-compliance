@@ -124,7 +124,7 @@ def update_taxable_values(doc, valid_accounts):
 
 
 def validate_item_wise_tax_detail(doc, gst_accounts):
-    if doc.doctype=="Purchase Order":
+    if doc.doctype in ["Purchase Order","Purchase Invoice","Purchase Receipt"]:
         if not doc.custom_manual_tax:
             if doc.doctype not in DOCTYPES_WITH_GST_DETAIL:
                 return
