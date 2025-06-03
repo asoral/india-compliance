@@ -639,13 +639,13 @@ def validate_items(doc, throw):
     if items_with_duplicate_taxes:
         if not throw:
             return False
-        frappe.throw(
-            _(
-                "Cannot use different Item Tax Templates in different rows for"
-                " following items:<br> {0}"
-            ).format("<br>".join(items_with_duplicate_taxes)),
-            title="Inconsistent Item Tax Templates",
-        )
+        # frappe.throw(
+        #     _(
+        #         "Cannot use different Item Tax Templates in different rows for"
+        #         " following items:<br> {0}"
+        #     ).format("<br>".join(items_with_duplicate_taxes)),
+        #     title="Inconsistent Item Tax Templates",
+        # )
 
     return True
 
